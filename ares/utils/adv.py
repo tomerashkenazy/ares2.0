@@ -100,43 +100,7 @@ class LinfStep(AttackerStep):
 
         return torch.clamp(x+noise, 0, 1)
 
-# L2 threat model
-class L2Step(AttackerStep):
-    """
-    Attack step for :math:`\ell_\infty` threat model. Given :math:`x_0`
-    and :math:`\epsilon`, the constraint set is given by:
 
-    .. math:: S = \{x | \|x - x_0\|_2 \leq \epsilon\}
-    """
-    def project(self, x):
-        """
-        Project the input x back to the ℓ₂ ball around the original input.
-        """
-        diff = x - self.orig_input
-        diff = diff.renorm(p=2, dim=0, maxnorm=self.eps)
-        return torch.clamp(self.orig_input + diff, 0, 1)
-
-    def step(self, x, g):
-        """
-        Take a step in the direction of the normalized gradient with step size.
-        """
-        l = len(x.shape) - 1
-        g_norm = torch.norm(g.view(g.shape[0], -1), dim=1).view(-1, *([1]*l))
-        scaled_g = g / (g_norm + 1e-10)
-        return x + scaled_g * self.step_size
-
-    def random_perturb(self, x):
-        # Flatten spatial + channel dims per sample
-        diff = torch.rand_like(x) - 0.5
-        diff = diff.view(diff.size(0), -1)
-        diff = diff / (diff.norm(p=2, dim=1, keepdim=True) + 1e-10)
-        diff = diff.view_as(x)
-        # scale by eps and clamp
-        return torch.clamp(x + diff * self.eps, 0, 1)
-    
-    def random_uniform(self, x):
-        return self.random_perturb(x)
-    
 def clamp(X, lower_limit, upper_limit):
     return torch.max(torch.min(X, upper_limit), lower_limit)
 
@@ -172,10 +136,7 @@ def adv_generator(args, images, target, model, eps, attack_steps, attack_lr, ran
     prev_training = bool(model.training)
     model.eval()
     orig_input = images.detach().cuda(non_blocking=True)
-    if args.attack_norm=='l2':
-        step = L2Step(eps=eps, orig_input=orig_input, step_size=attack_lr)
-    else:
-        step = LinfStep(eps=eps, orig_input=orig_input, step_size=attack_lr)
+    step = LinfStep(eps=eps, orig_input=orig_input, step_size=attack_lr)
 
     # define loss function
     if attack_criterion == 'regular':
@@ -196,7 +157,7 @@ def adv_generator(args, images, target, model, eps, attack_steps, attack_lr, ran
     if random_start:
         images = step.random_perturb(images)
     else:
-        images = orig_input.clone().detach()
+        images = step.random_uniform(images)
     
     for _ in range(attack_steps):
         images = images.clone().detach().requires_grad_(True)

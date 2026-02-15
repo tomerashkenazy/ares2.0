@@ -18,9 +18,4 @@ from .cda import CDA, load_netG
 from .tta import TTA
 from .autoattack import AutoAttack
 # detection package is used to attack detection models
-# Make detection optional to avoid hard dependency on mmdet when doing classification
-try:
-    from .detection import *  # noqa: F401,F403
-except Exception:
-    # Detection stack (mmdet/mmcv/mmengine) not installed; skip quietly
-    pass
+from .detection import *
