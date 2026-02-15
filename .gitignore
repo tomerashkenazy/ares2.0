@@ -2,3 +2,24 @@
 .DS_Store
 .DS_Store?
 **/.vscode
+
+# Build artifacts
+*.egg-info/
+build/
+dist/
+
+# Backup files
+*.backup
+*.bak
+
+# Job manager database files
+*.db
+
+# Output directories
+outputs/
+results/
+
+# Shell scripts and job manager (custom user scripts)
+job_manager/
+sbatches/
+sh_files/
